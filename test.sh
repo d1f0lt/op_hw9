@@ -20,12 +20,13 @@ mkfs.ext2 -b 2048 -F "$IMG"
 echo "=== Mounting ==="
 sudo mount -t ext2 "$IMG" "$MNT"
 trap 'mountpoint -q "$MNT" 2>/dev/null && sudo umount "$MNT"' EXIT
+sudo chmod a+rwx "$MNT"
 
 echo "=== Creating test files ==="
 echo "Hello ext2 world!" > "$MNT/small.txt"
-sudo mkdir -p "$MNT/dir1/subdir" "$MNT/dir2"
-echo "file inside dir1" | sudo tee "$MNT/dir1/file1.txt" > /dev/null
-echo "file inside subdir" | sudo tee "$MNT/dir1/subdir/file2.txt" > /dev/null
+mkdir -p "$MNT/dir1/subdir" "$MNT/dir2"
+echo "file inside dir1" > "$MNT/dir1/file1.txt"
+echo "file inside subdir" > "$MNT/dir1/subdir/file2.txt"
 dd if=/dev/urandom of="$MNT/bigfile.bin" bs=2048 count=100 status=none
 dd if=/dev/urandom of="$MNT/sparse.bin" bs=1 count=4096 seek=$((5*1024*1024*1024)) conv=notrunc status=none
 
@@ -47,9 +48,10 @@ ROOT_INO=2
 
 echo "=== Recording directory listings ==="
 declare -A DIR_LIST
-for d in "" dir1 dir1/subdir dir2; do
+for d in . dir1 dir1/subdir dir2; do
+    if [ "$d" = "." ]; then dirpath="$MNT"; else dirpath="$MNT/$d"; fi
     listing=""
-    for entry in "$MNT/$d"/* "$MNT/$d"/. "$MNT/$d"/.. ; do
+    for entry in "$dirpath"/* "$dirpath"/. "$dirpath"/.. ; do
         [ -e "$entry" ] || [ -L "$entry" ] || continue
         listing+="$(stat -c '%i' "$entry") $(basename "$entry")"$'\n'
     done
@@ -89,9 +91,9 @@ test_on_device() {
     done < "$SUMS"
 
     echo "--- parsedirentry ---"
-    for d in "" dir1 dir1/subdir dir2; do
-        dino=$( [ -z "$d" ] && echo $ROOT_INO || echo ${INODES[$d]} )
-        dlabel=$( [ -z "$d" ] && echo "/" || echo "$d" )
+    for d in . dir1 dir1/subdir dir2; do
+        dino=$( [ "$d" = "." ] && echo $ROOT_INO || echo ${INODES[$d]} )
+        dlabel=$( [ "$d" = "." ] && echo "/" || echo "$d" )
         parsed=$("$DIR/getinodedata" "$DEV" "$dino" | "$DIR/parsedirentry")
         echo "$parsed"
         ref="${DIR_LIST[$d]}"

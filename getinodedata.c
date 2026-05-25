@@ -3,6 +3,7 @@
 static struct ext2_fs fs;
 static uint64_t remaining;
 static char *zero_block;
+static char *emit_buf;
 
 static void write_all(const void *buf, size_t n) {
     size_t w = 0;
@@ -15,8 +16,7 @@ static void write_all(const void *buf, size_t n) {
 
 static void emit_block(uint32_t block) {
     if (remaining == 0) return;
-    static char *buf = NULL;
-    if (!buf) { buf = malloc(fs.block_size); if (!buf) die("malloc"); }
+    if (!emit_buf) { emit_buf = malloc(fs.block_size); if (!emit_buf) die("malloc"); }
     if (block == 0) {
         size_t n = fs.block_size;
         if (n > remaining) n = (size_t)remaining;
@@ -24,10 +24,10 @@ static void emit_block(uint32_t block) {
         remaining -= n;
         return;
     }
-    ext2_read_block(&fs, block, buf);
+    ext2_read_block(&fs, block, emit_buf);
     size_t n = fs.block_size;
     if (n > remaining) n = (size_t)remaining;
-    write_all(buf, n);
+    write_all(emit_buf, n);
     remaining -= n;
 }
 
@@ -93,6 +93,7 @@ int main(int argc, char **argv) {
     if (remaining) walk_indirect(le32toh(inode.i_block[EXT2_TIND_BLOCK]), 3);
 
     free(zero_block);
+    free(emit_buf);
     close(fs.fd);
     return 0;
 }

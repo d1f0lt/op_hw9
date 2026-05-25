@@ -2,7 +2,14 @@
 #define EXT2FS_H
 
 #include <stdint.h>
+
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define le16toh(x) OSSwapLittleToHostInt16(x)
+#define le32toh(x) OSSwapLittleToHostInt32(x)
+#else
 #include <endian.h>
+#endif
 
 #define EXT2_SUPER_MAGIC       0xEF53
 #define EXT2_SUPERBLOCK_OFFSET 1024

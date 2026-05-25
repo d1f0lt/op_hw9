@@ -1,7 +1,9 @@
 CC      = gcc
-CFLAGS  = -Wall -Wextra -g -std=c99
+CFLAGS  = -Wall -Wextra -g -std=c99 -D_GNU_SOURCE
 
 TARGETS = getinodeinfo getinodedata parsedirentry
+
+all: $(TARGETS)
 
 $(TARGETS): %: %.c ext2common.h ext2fs.h
 	$(CC) $(CFLAGS) -o $@ $<
@@ -13,10 +15,10 @@ valgrind: $(TARGETS)
 	@if [ ! -f testdir/ext2.img ]; then echo "Run 'make test' first"; exit 1; fi
 	valgrind --leak-check=full --error-exitcode=1 ./getinodeinfo testdir/ext2.img 2
 	valgrind --leak-check=full --error-exitcode=1 ./getinodedata testdir/ext2.img 2 > /dev/null
-	valgrind --leak-check=full --error-exitcode=1 ./parsedirentry testdir/checksums.txt > /dev/null
+	valgrind --leak-check=full --error-exitcode=1 sh -c './getinodedata testdir/ext2.img 2 | ./parsedirentry' > /dev/null
 	@echo "Valgrind: OK"
 
 clean:
 	rm -f $(TARGETS)
 
-.PHONY: test valgrind clean
+.PHONY: all test valgrind clean

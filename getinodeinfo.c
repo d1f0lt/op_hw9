@@ -84,4 +84,5 @@ int main(int argc, char **argv) {
     print_indirect(&fs, le32toh(inode.i_block[EXT2_TIND_BLOCK]), 3, "Triple-indirect");
 
     close(fs.fd);
+    return 0;
 }
